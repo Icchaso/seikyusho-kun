@@ -15,12 +15,18 @@ and withholding tax.
 ## Install
 
 ```bash
-npm install -g github:Icchaso/seikyusho-kun
-seikyusho-kun init   # one-time setup
-seikyusho-kun new    # issue an invoice
+npx -y github:Icchaso/seikyusho-kun init   # one-time setup
+npx -y github:Icchaso/seikyusho-kun new    # issue an invoice
 ```
 
-> Not on npm yet — install from GitHub for now. Once published,
+To install it for good:
+
+```bash
+git clone https://github.com/Icchaso/seikyusho-kun.git
+cd seikyusho-kun && npm install && npm link
+```
+
+> Not on npm yet — the `github:` prefix is needed for now. Once published,
 > `npx seikyusho-kun` will work directly.
 
 Requires **Node.js 18.17+** and any Chromium-based browser (Chrome, Edge,

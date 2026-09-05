@@ -134,15 +134,16 @@ async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const command = argv[0] && !argv[0].startsWith("-") ? argv[0] : undefined;
 
+  // バージョンはヘルプより先に見る(--version がヘルプに吸われないように)
+  if (argv.includes("--version") || argv.includes("-v") || command === "version") {
+    console.log(version());
+    return 0;
+  }
   if (!command || argv.includes("--help") || argv.includes("-h")) {
     if (!command || !(command in OPTIONS)) {
       console.log(HELP);
       return 0;
     }
-  }
-  if (argv.includes("--version") || argv.includes("-v") || command === "version") {
-    console.log(version());
-    return 0;
   }
 
   const options = OPTIONS[command as string];
