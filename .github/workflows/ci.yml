@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["18.17", "20", "22"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      # PDF生成に Chrome を使う。日本語フォントが無いと豆腐になるので入れる。
+      - name: 日本語フォントを入れる
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
+
+      - name: Chrome を確認する
+        run: google-chrome --version
+
+      - run: npm ci
+
+      - name: ビルド
+        run: npm run build
+
+      # 計算・日付・レイアウトを実測込みで検証する
+      - name: テスト
+        run: npm test
+
+      - name: 実際に1枚出してみる（doctor）
+        run: |
+          mkdir -p "$RUNNER_TEMP/sk"
+          cp examples/config.example.json "$RUNNER_TEMP/sk/config.json"
+          node -e "
+            const fs=require('fs');
+            const p=process.env.RUNNER_TEMP+'/sk/config.json';
+            const d=JSON.parse(fs.readFileSync(p,'utf8'));
+            d.outputDir=process.env.RUNNER_TEMP+'/sk/out';
+            delete d.issuer.logo; delete d.mail; delete d.hooks;
+            fs.writeFileSync(p, JSON.stringify(d,null,2));
+          "
+          SEIKYUSHO_HOME="$RUNNER_TEMP/sk" node dist/cli.js doctor
+
+      - name: 発行できることを確認する
+        run: |
+          SEIKYUSHO_HOME="$RUNNER_TEMP/sk" node dist/cli.js new \
+            --to "テスト商事株式会社" --item "テスト項目" --amount 150000 --due 月末 --yes
+          SEIKYUSHO_HOME="$RUNNER_TEMP/sk" node dist/cli.js list
+          test -n "$(find "$RUNNER_TEMP/sk/out" -name '*.pdf')" || (echo "PDFが出ていません" && exit 1)

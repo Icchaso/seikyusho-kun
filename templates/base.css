@@ -1,0 +1,270 @@
+/* ============================================================
+   base.css — 全テーマ共通のレイアウト骨格
+   色・線の太さ・書体はテーマ側の CSS 変数で上書きする。
+   密度段(d1〜d4)は変数だけを差し替えるので、テーマを書く人が
+   密度のことを気にしなくてよい。
+   ============================================================ */
+
+@page {
+  size: A4;
+  margin: var(--page-margin, 15mm) var(--page-margin-x, 15mm);
+}
+
+* { box-sizing: border-box; }
+
+:root {
+  /* --- 色(テーマで上書き) --- */
+  --ink: #1a1a1a;
+  --muted: #6b6b6b;
+  --rule: #333333;
+  --rule-soft: #c9c9c9;
+  --bg-head: #f2f2f2;
+  --bg-total: #e9e9e9;
+  --bg-soft: #fafafa;
+  --accent: #1a1a1a;
+
+  /* --- 線 --- */
+  --rule-w: 1px;
+
+  /* --- 密度(d1 が既定。body.dN が上書き) --- */
+  --fs: 10pt;
+  --fs-sm: 8.5pt;
+  --fs-xs: 7.5pt;
+  --gap: 9mm;
+  --gap-sm: 4mm;
+  --cell-y: 6px;
+  --cell-x: 8px;
+  --title: 28pt;
+  --grand: 22pt;
+  --to-name: 16pt;
+  --from-name: 13pt;
+  --row-min: 30px;
+  --lh: 1.6;
+}
+
+/* 密度段: 数値だけを差し替える */
+body.d1 { }
+body.d2 {
+  --fs: 9.5pt; --fs-sm: 8pt; --fs-xs: 7pt;
+  --gap: 6.5mm; --gap-sm: 3mm;
+  --cell-y: 4.5px; --title: 25pt; --grand: 20pt;
+  --to-name: 15pt; --from-name: 12pt; --row-min: 25px; --lh: 1.55;
+}
+body.d3 {
+  --fs: 9pt; --fs-sm: 7.5pt; --fs-xs: 6.8pt;
+  --gap: 4.5mm; --gap-sm: 2.2mm;
+  --cell-y: 3.5px; --title: 22pt; --grand: 18pt;
+  --to-name: 14pt; --from-name: 11.5pt; --row-min: 21px; --lh: 1.45;
+}
+body.d4 {
+  --fs: 8pt; --fs-sm: 7pt; --fs-xs: 6.4pt;
+  --gap: 3mm; --gap-sm: 1.6mm;
+  --cell-y: 2.5px; --title: 19pt; --grand: 16pt;
+  --to-name: 13pt; --from-name: 11pt; --row-min: 17px; --lh: 1.4;
+}
+
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+body {
+  font-family: var(--font, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Noto Sans JP", "Yu Gothic Medium", "Yu Gothic", Meiryo, sans-serif);
+  color: var(--ink);
+  font-size: var(--fs);
+  line-height: var(--lh);
+  margin: 0;
+  /* A4 の印字領域(297 - 上下マージン)を最低高にして、フッターを紙の下端へ落とす */
+  min-height: calc(297mm - var(--page-margin, 15mm) * 2 - 2mm);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 数字と英字は等幅寄りの書体で桁を揃える */
+.n {
+  font-family: var(--font-num, "Helvetica Neue", Arial, sans-serif);
+  font-feature-settings: "tnum" 1;
+  white-space: nowrap;
+}
+
+/* ===== ヘッダー ===== */
+.hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10mm;
+}
+.hd-title {
+  font-size: var(--title);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  margin: 0;
+}
+.hd-meta {
+  text-align: right;
+  font-size: var(--fs-sm);
+  line-height: 1.9;
+  white-space: nowrap;
+}
+.hd-meta .k { color: var(--muted); margin-right: 0.6em; }
+
+/* ===== 宛先 / 発行者 / 挨拶 / 合計 / 支払期限 =====
+   発行者ブロックは背が高いので、その横の余白を左カラムが使えるように
+   グリッドで組む(参考にした一般的な請求書と同じ配置)。 */
+.parties {
+  display: grid;
+  grid-template-columns: var(--col-left, 1.35fr) var(--col-right, 1fr);
+  column-gap: 10mm;
+  align-items: start;
+  margin-top: var(--gap);
+}
+.to { grid-column: 1; grid-row: 1; min-width: 0; }
+.to-name {
+  font-size: var(--to-name);
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.to-name .keigo { margin-left: 0.5em; white-space: nowrap; }
+.to-contact { margin-top: 0.35em; font-size: calc(var(--fs) + 0.5pt); }
+.to-addr { margin-top: 0.5em; font-size: var(--fs-sm); color: var(--muted); }
+
+.from {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  min-width: 0;
+  text-align: right;
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+}
+.from-name {
+  font-size: var(--from-name);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  margin-bottom: 0.25em;
+}
+.from-logo {
+  max-height: 14mm;
+  max-width: 55mm;
+  object-fit: contain;
+  margin-bottom: 2mm;
+}
+.from .reg { white-space: nowrap; }
+
+.lead {
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: var(--gap);
+  font-size: var(--fs);
+}
+
+.grand {
+  grid-column: 1;
+  grid-row: 3;
+  display: flex;
+  align-items: baseline;
+  gap: 1.2em;
+  min-width: 0;
+  margin-top: var(--gap);
+  padding-bottom: 2mm;
+  border-bottom: 1.5px solid var(--rule);
+}
+.grand-label { font-size: calc(var(--fs) + 3pt); font-weight: 700; letter-spacing: 0.08em; }
+.grand-value { font-size: var(--grand); font-weight: 700; margin-left: auto; }
+
+.due {
+  grid-column: 1;
+  grid-row: 4;
+  margin-top: var(--gap-sm);
+  font-size: calc(var(--fs) + 0.5pt);
+}
+.due .k { letter-spacing: 0.05em; margin-right: 0.8em; }
+
+/* ===== 明細テーブル ===== */
+.items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--gap);
+  font-size: var(--fs);
+}
+.items th,
+.items td {
+  border: var(--rule-w) solid var(--rule-soft);
+  padding: var(--cell-y) var(--cell-x);
+  vertical-align: middle;
+}
+.items thead th {
+  background: var(--bg-head);
+  font-weight: 600;
+  text-align: center;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.05em;
+}
+/* 複数ページに溢れても、各ページに見出し行を繰り返す */
+.items thead { display: table-header-group; }
+.items tr { break-inside: avoid; page-break-inside: avoid; }
+.items td.num { text-align: right; }
+.items td.center { text-align: center; }
+.items tbody tr { height: var(--row-min); }
+.items .item-note {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  margin-top: 0.2em;
+}
+.items .blank td { height: var(--row-min); }
+.items .sum td {
+  text-align: right;
+  background: var(--bg-soft);
+}
+.items .sum td.label { font-weight: 600; }
+.items .total td {
+  background: var(--bg-total);
+  font-weight: 700;
+  font-size: calc(var(--fs) + 1pt);
+}
+.items .withholding td { background: var(--bg-soft); }
+.items .payable td {
+  background: var(--bg-total);
+  font-weight: 700;
+}
+.reduced-mark { font-size: var(--fs-xs); color: var(--muted); }
+.tax-note { margin-top: 1mm; font-size: var(--fs-xs); color: var(--muted); }
+
+/* ===== 振込先 ===== */
+.bank { margin-top: var(--gap); }
+.bank-lead { font-size: var(--fs); margin-bottom: var(--gap-sm); }
+.bank table { border-collapse: collapse; font-size: var(--fs-sm); }
+.bank td { padding: 0.15em 0; vertical-align: top; }
+.bank td.k { color: var(--muted); width: 6.5em; white-space: nowrap; }
+.bank td.v { font-weight: 600; padding-left: 0.8em; }
+
+/* ===== 備考 ===== */
+.remarks {
+  margin-top: var(--gap);
+  border: var(--rule-w) solid var(--rule-soft);
+  padding: calc(var(--cell-y) + 2px) var(--cell-x);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+  break-inside: avoid;
+}
+.remarks .k {
+  font-weight: 600;
+  margin-right: 1.2em;
+  letter-spacing: 0.1em;
+}
+.remarks ul { margin: 0; padding-left: 1.2em; }
+.remarks li { margin: 0.1em 0; }
+
+/* ===== フッター(常に紙の下端) ===== */
+.ft {
+  margin-top: auto;
+  padding-top: var(--gap-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.ft .page { white-space: nowrap; }

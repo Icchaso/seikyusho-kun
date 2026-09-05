@@ -1,0 +1,28 @@
+/* ============================================================
+   plain — 既定テーマ
+   白地・黒文字・罫線のみ。日本の請求書の標準的な体裁で、
+   どの業種・どの取引先に出しても浮かない。ロゴが無くても成立する。
+   ============================================================ */
+:root {
+  --ink: #1a1a1a;
+  --muted: #6b6b6b;
+  --rule: #2b2b2b;
+  --rule-soft: #8c8c8c;
+  --bg-head: #f4f4f4;
+  --bg-total: #e6e6e6;
+  --bg-soft: #ffffff;
+  --accent: #1a1a1a;
+  --rule-w: 1px;
+}
+
+.hd-title { letter-spacing: 0.18em; }
+
+.to-name {
+  border-bottom: 1px solid var(--rule-soft);
+  padding-bottom: 0.3em;
+}
+
+/* 合計金額は「¥11,000-」のように末尾にハイフンを添えるのが慣例 */
+.grand-value::after { content: "-"; margin-left: 0.05em; }
+
+.items thead th { border-color: var(--rule-soft); }

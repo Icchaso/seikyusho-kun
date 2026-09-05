@@ -1,0 +1,66 @@
+{
+  "name": "seikyusho-kun",
+  "version": "0.1.0",
+  "description": "請求書くん — 宛先・名目・金額・締日の4つを言うだけで、日本の適格請求書(インボイス)に対応したPDFを発行するCLI。メール送信・定期発行つき。",
+  "keywords": [
+    "invoice",
+    "請求書",
+    "インボイス制度",
+    "適格請求書",
+    "源泉徴収",
+    "pdf",
+    "cli",
+    "japan",
+    "freelance",
+    "claude-code"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "bin": {
+    "seikyusho-kun": "dist/cli.js",
+    "seikyu": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "templates",
+    "skills",
+    "examples",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "tsc -p tsconfig.test.json && node --test dist-test/test/*.test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "nunjucks": "^3.2.4",
+    "picocolors": "^1.1.1"
+  },
+  "optionalDependencies": {
+    "nodemailer": "^7.0.0",
+    "resend": "^4.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/nunjucks": "^3.2.6",
+    "typescript": "^5.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Icchaso/seikyusho-kun.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Icchaso/seikyusho-kun/issues"
+  },
+  "homepage": "https://github.com/Icchaso/seikyusho-kun#readme"
+}

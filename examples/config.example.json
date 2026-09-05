@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "issuer": {
+    "name": "サンプル工房",
+    "rep": "見本 太郎",
+    "regNo": "T1234567890123",
+    "tel": "03-1234-5678",
+    "email": "info@example.com",
+    "zip": "100-0001",
+    "address": "東京都千代田区サンプル1-2-3 サンプルビル10F",
+    "logo": "~/Pictures/logo.png"
+  },
+  "bank": {
+    "bank": "サンプル銀行",
+    "branch": "本店営業部",
+    "branchCode": "001",
+    "accountType": "普通",
+    "accountNumber": "1234567",
+    "accountHolder": "サンプルコウボウ"
+  },
+  "tax": {
+    "mode": "exclusive",
+    "defaultRate": 10,
+    "rounding": "floor",
+    "withholding": false
+  },
+  "theme": "plain",
+  "accentColor": "#2f6fb2",
+  "outputDir": "~/Documents/請求書/{year}",
+  "fileNamePattern": "請求書_{client}_{no}",
+  "invoiceNoPattern": "{yyyy}{mm}-{seq:3}",
+  "minRows": 5,
+  "greeting": "下記の通りご請求申し上げます。",
+  "notes": [
+    "お振込手数料は貴社にてご負担いただきますようお願いいたします。"
+  ],
+  "mail": {
+    "provider": "resend",
+    "fromName": "サンプル工房 見本 太郎",
+    "fromEmail": "info@example.com",
+    "bcc": "control@example.com"
+  },
+  "hooks": {
+    "afterIssue": "~/bin/my-sync.sh"
+  }
+}

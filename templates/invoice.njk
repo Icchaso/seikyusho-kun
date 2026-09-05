@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>請求書 {{ invoiceNo }}</title>
+<style>
+{{ styles | safe }}
+</style>
+</head>
+<body class="theme-{{ theme }} {{ density }}">
+
+<div class="hd">
+  <h1 class="hd-title">請求書</h1>
+  <div class="hd-meta">
+    <div><span class="k">請求書番号</span><span class="n">{{ invoiceNo }}</span></div>
+    <div><span class="k">発行日</span><span>{{ issueDate }}</span></div>
+  </div>
+</div>
+
+<div class="parties">
+  <div class="to">
+    <div class="to-name">{{ client.name }}<span class="keigo">{{ client.honorific }}</span></div>
+    {% if client.contact %}<div class="to-contact">{{ client.contact }} 様</div>{% endif %}
+    {% if client.zip or client.address %}
+    <div class="to-addr">
+      {% if client.zip %}〒{{ client.zip }}<br>{% endif %}
+      {% if client.address %}{{ client.address }}{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="from">
+    {% if logoDataUri %}<div><img class="from-logo" src="{{ logoDataUri }}" alt=""></div>{% endif %}
+    <div class="from-name">{{ issuer.name }}</div>
+    {% if issuer.rep %}<div>{{ issuer.rep }}</div>{% endif %}
+    {% if issuer.tel %}<div class="n">TEL: {{ issuer.tel }}</div>{% endif %}
+    {% if issuer.email %}<div class="n">{{ issuer.email }}</div>{% endif %}
+    {% if issuer.zip %}<div class="n">〒{{ issuer.zip }}</div>{% endif %}
+    {% if issuer.address %}<div>{{ issuer.address }}</div>{% endif %}
+    {% if issuer.regNo %}<div class="reg">登録番号 <span class="n">{{ issuer.regNo }}</span></div>{% endif %}
+  </div>
+
+  {% if greeting %}<div class="lead">{{ greeting }}</div>{% endif %}
+
+  <div class="grand">
+    {% if totals.withholding %}
+    <span class="grand-label">お振込金額</span>
+    <span class="grand-value n">¥{{ totals.payable | yen }}</span>
+    {% else %}
+    <span class="grand-label">合計金額</span>
+    <span class="grand-value n">¥{{ totals.total | yen }}</span>
+    {% endif %}
+  </div>
+
+  <div class="due"><span class="k">お支払期限</span><span>{{ dueDate }}</span></div>
+</div>
+
+<table class="items">
+  <thead>
+    <tr>
+      <th style="width:auto">品名</th>
+      {% if totals.hasReduced %}<th style="width:9%">税率</th>{% endif %}
+      <th style="width:11%">数量</th>
+      <th style="width:16%">単価</th>
+      <th style="width:18%">金額</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td>
+        {{ item.name }}{% if item.reduced %} <span class="reduced-mark">※</span>{% endif %}
+        {% if item.note %}<span class="item-note">{{ item.note }}</span>{% endif %}
+      </td>
+      {% if totals.hasReduced %}<td class="center n">{{ item.taxRate }}%</td>{% endif %}
+      <td class="num n">{{ item.qty | yen }}{% if item.unit %} {{ item.unit }}{% endif %}</td>
+      <td class="num n">¥{{ item.unitPrice | yen }}</td>
+      <td class="num n">¥{{ (item.amountIncl if taxMode == "inclusive" else item.amountExcl) | yen }}</td>
+    </tr>
+    {% endfor %}
+    {% for _ in range(0, emptyRows) %}
+    <tr class="blank">
+      <td>&nbsp;</td>
+      {% if totals.hasReduced %}<td></td>{% endif %}
+      <td></td><td></td><td></td>
+    </tr>
+    {% endfor %}
+
+    <tr class="sum">
+      <td class="label" colspan="{{ cols - 1 }}">小計{% if taxMode == "inclusive" %}（税抜）{% endif %}</td>
+      <td class="num n">¥{{ totals.subtotal | yen }}</td>
+    </tr>
+    {% if totals.buckets | length > 1 %}
+      {% for b in totals.buckets %}
+    <tr class="sum">
+      <td class="label" colspan="{{ cols - 1 }}"><span class="n">{{ b.rate }}%</span>対象　<span class="n">¥{{ b.taxable | yen }}</span>　消費税</td>
+      <td class="num n">¥{{ b.tax | yen }}</td>
+    </tr>
+      {% endfor %}
+    {% else %}
+    <tr class="sum">
+      <td class="label" colspan="{{ cols - 1 }}">消費税（<span class="n">{{ singleRate }}%</span>）</td>
+      <td class="num n">¥{{ totals.taxTotal | yen }}</td>
+    </tr>
+    {% endif %}
+    <tr class="total">
+      <td class="label" colspan="{{ cols - 1 }}">合計（税込）</td>
+      <td class="num n">¥{{ totals.total | yen }}</td>
+    </tr>
+    {% if totals.withholding %}
+    <tr class="sum withholding">
+      <td class="label" colspan="{{ cols - 1 }}">源泉徴収税額</td>
+      <td class="num n">△ ¥{{ totals.withholding | yen }}</td>
+    </tr>
+    <tr class="total payable">
+      <td class="label" colspan="{{ cols - 1 }}">お振込金額</td>
+      <td class="num n">¥{{ totals.payable | yen }}</td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+{% if totals.hasReduced %}<div class="tax-note">※ は軽減税率（8%）対象の品目です。</div>{% endif %}
+
+{% if bank.bank or bank.accountNumber or bank.accountHolder %}
+<div class="bank">
+  <div class="bank-lead">下記口座へのお振込みをお願いいたします。</div>
+  <table>
+    {% if bank.bank %}<tr><td class="k">銀行名</td><td class="v">{{ bank.bank }}</td></tr>{% endif %}
+    {% if bank.branch %}<tr><td class="k">支店名</td><td class="v">{{ bank.branch }}{% if bank.branchCode %}（<span class="n">{{ bank.branchCode }}</span>）{% endif %}</td></tr>{% endif %}
+    {% if bank.accountType %}<tr><td class="k">口座種別</td><td class="v">{{ bank.accountType }}</td></tr>{% endif %}
+    {% if bank.accountNumber %}<tr><td class="k">口座番号</td><td class="v n">{{ bank.accountNumber }}</td></tr>{% endif %}
+    {% if bank.accountHolder %}<tr><td class="k">口座名義</td><td class="v">{{ bank.accountHolder }}</td></tr>{% endif %}
+  </table>
+</div>
+{% endif %}
+
+{% if notes and notes | length %}
+<div class="remarks">
+  <span class="k">備考</span>
+  {% if notes | length == 1 %}{{ notes[0] }}{% else %}
+  <ul>{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="ft">
+  <div>{{ issuer.name }}</div>
+  {% if pageLabel %}<div class="page n">{{ pageLabel }}</div>{% endif %}
+</div>
+
+{{ measureScript | safe }}
+</body>
+</html>

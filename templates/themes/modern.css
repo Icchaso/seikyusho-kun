@@ -1,0 +1,51 @@
+/* ============================================================
+   modern — ロゴとメインカラーで自分のブランドを出したい人向け
+   accentColor(設定) の1色だけで全体の印象が変わる。
+   ============================================================ */
+:root {
+  --ink: #1c2430;
+  --muted: #6a7688;
+  --rule: var(--accent);
+  --rule-soft: #d7dee8;
+  --bg-head: #f2f6fb;
+  --bg-total: #e7eff9;
+  --bg-soft: #fbfcfe;
+  --rule-w: 1px;
+}
+
+.hd {
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 3mm;
+}
+.hd-title { color: var(--accent); letter-spacing: 0.16em; }
+
+.to-name {
+  border-bottom: 1px solid var(--rule-soft);
+  padding-bottom: 0.35em;
+}
+.from-name { color: var(--accent); }
+
+.from { grid-row: 1 / span 2; }
+.grand {
+  grid-column: 1 / -1;
+  border-bottom: none;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  padding: 2.5mm 5mm;
+}
+.grand-label { font-weight: 600; letter-spacing: 0.12em; }
+.grand-value { letter-spacing: 0.02em; }
+
+.items thead th {
+  color: var(--accent);
+  border-color: var(--rule-soft);
+}
+.items .total td { color: var(--accent); }
+
+.bank, .remarks {
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+  padding: 3mm 5mm;
+}
+.bank-lead { font-weight: 600; color: var(--accent); }

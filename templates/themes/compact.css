@@ -1,0 +1,30 @@
+/* ============================================================
+   compact — 明細が多い人向け。余白を詰めて情報量を稼ぐ。
+   罫線は細く、見出しは小さく。1枚に入る行数が plain より増える。
+   ============================================================ */
+:root {
+  --ink: #1a1a1a;
+  --muted: #767676;
+  --rule: #444444;
+  --rule-soft: #b8b8b8;
+  --bg-head: #f6f6f6;
+  --bg-total: #ececec;
+  --bg-soft: #fcfcfc;
+  --accent: #1a1a1a;
+  --rule-w: 0.75px;
+  --page-margin: 12mm;
+}
+
+body { --gap: 5mm; --gap-sm: 2.5mm; --row-min: 20px; }
+body.d2 { --gap: 4mm; --gap-sm: 2mm; --row-min: 18px; }
+body.d3 { --gap: 3mm; --gap-sm: 1.6mm; --row-min: 16px; }
+body.d4 { --gap: 2.2mm; --gap-sm: 1.2mm; --row-min: 14px; }
+
+.hd-title { letter-spacing: 0.1em; }
+.hd { border-bottom: 1px solid var(--rule); padding-bottom: 2mm; }
+
+.grand { padding-bottom: 1.2mm; }
+:root { --col-left: 1.5fr; }
+.items thead th { letter-spacing: 0.02em; }
+.bank table { font-size: var(--fs-xs); }
+.remarks { padding: 2mm 3mm; }

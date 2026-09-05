@@ -1,0 +1,14 @@
+{
+  "name": "株式会社サンプル商事",
+  "contact": "見本 花子",
+  "email": "keiri@example.com",
+  "schedule": {
+    "day": "末日",
+    "item": "サイト保守・運用費",
+    "amount": 5000,
+    "unit": "式",
+    "due": "翌月末",
+    "email": false,
+    "enabled": true
+  }
+}
