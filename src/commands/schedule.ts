@@ -70,6 +70,7 @@ function list(): number {
 }
 
 async function add(name?: string): Promise<number> {
+  ui.requireInteractive("定期発行の設定");
   const config = loadConfig();
   p.intro(ui.c.bgCyan(ui.c.black(" 定期発行の設定 ")));
 

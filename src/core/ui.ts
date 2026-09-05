@@ -53,3 +53,19 @@ export function yen(n: number): string {
 export function isInteractive(): boolean {
   return Boolean(process.stdin.isTTY && process.stdout.isTTY);
 }
+
+/**
+ * 対話が必要なコマンドを、パイプ・cron・AIエージェント経由で呼ばれたときに
+ * 半端な状態で始めないためのガード。
+ */
+export function requireInteractive(what: string): void {
+  if (isInteractive()) return;
+  throw new Error(
+    [
+      `${what}はターミナルでの対話が必要です。`,
+      "",
+      "  ターミナルを開いて、そこで直接実行してください。",
+      "  （パイプ・cron・エージェント経由では入力を受け取れません）",
+    ].join("\n"),
+  );
+}

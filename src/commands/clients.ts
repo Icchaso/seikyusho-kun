@@ -82,6 +82,7 @@ function show(name: string): number {
 }
 
 async function add(preset?: string): Promise<number> {
+  ui.requireInteractive("取引先の登録");
   p.intro(ui.c.bgCyan(ui.c.black(" 取引先の登録 ")));
   const nameInput =
     preset ??

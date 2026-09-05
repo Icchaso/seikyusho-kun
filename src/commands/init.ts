@@ -50,6 +50,7 @@ export function installClaudeSkill(): string | null {
 }
 
 export async function runInit(args: { force?: boolean } = {}): Promise<number> {
+  ui.requireInteractive("セットアップ");
   p.intro(ui.c.bgCyan(ui.c.black(" 請求書くん セットアップ ")));
 
   const existing = configExists();

@@ -34,6 +34,7 @@ function cancelled(): never {
 
 /** メール送信の設定ウィザード */
 async function setup(): Promise<number> {
+  ui.requireInteractive("メール送信の設定");
   const config = loadConfig();
   p.intro(ui.c.bgCyan(ui.c.black(" メール送信の設定 ")));
 

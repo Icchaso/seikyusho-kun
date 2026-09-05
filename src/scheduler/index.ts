@@ -38,6 +38,20 @@ function logFile(): string {
   return path.join(ensureDir(logsDir()), "run-due.log");
 }
 
+/**
+ * 自動実行に引き継ぐ環境変数。
+ * launchd や cron は最小限の環境で走るため、いま効いている設定を焼き込んでおかないと
+ * 「手で叩くと動くのに自動だと動かない」が起きる。
+ */
+function inheritedEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  if (process.env.SEIKYUSHO_HOME) env["SEIKYUSHO_HOME"] = process.env.SEIKYUSHO_HOME;
+  if (process.env.SEIKYUSHO_CHROME) env["SEIKYUSHO_CHROME"] = process.env.SEIKYUSHO_CHROME;
+  // node や chrome を PATH から探すので、いまの PATH を引き継ぐ
+  if (process.env.PATH) env["PATH"] = process.env.PATH;
+  return env;
+}
+
 // ---------- macOS (launchd) ----------
 
 function installDarwin(hour: number, minute: number): ScheduleStatus {
@@ -45,6 +59,13 @@ function installDarwin(hour: number, minute: number): ScheduleStatus {
   const args = [node as string, cli as string, ...rest]
     .map((a) => `    <string>${a}</string>`)
     .join("\n");
+  const envEntries = Object.entries(inheritedEnv())
+    .map(([k, v]) => `    <key>${k}</key><string>${v}</string>`)
+    .join("\n");
+  const envBlock = envEntries
+    ? `  <key>EnvironmentVariables</key>\n  <dict>\n${envEntries}\n  </dict>\n`
+    : "";
+
   const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -55,7 +76,7 @@ function installDarwin(hour: number, minute: number): ScheduleStatus {
   <array>
 ${args}
   </array>
-  <key>StartCalendarInterval</key>
+${envBlock}  <key>StartCalendarInterval</key>
   <dict>
     <key>Hour</key><integer>${hour}</integer>
     <key>Minute</key><integer>${minute}</integer>
@@ -116,7 +137,10 @@ function installLinux(hour: number, minute: number): ScheduleStatus {
   const cmd = runDueCommand()
     .map((a) => (a.includes(" ") ? `"${a}"` : a))
     .join(" ");
-  const line = `${minute} ${hour} * * * ${cmd} >> ${logFile()} 2>&1 ${CRON_MARKER}`;
+  const envPrefix = Object.entries(inheritedEnv())
+    .map(([k, v]) => `${k}="${v}"`)
+    .join(" ");
+  const line = `${minute} ${hour} * * * ${envPrefix} ${cmd} >> "${logFile()}" 2>&1 ${CRON_MARKER}`;
   const next = `${stripCronEntry(readCrontab()).trimEnd()}\n${line}\n`;
   writeCrontab(next.trimStart());
   return {
@@ -136,7 +160,14 @@ function uninstallLinux(): void {
 
 function installWin32(hour: number, minute: number): ScheduleStatus {
   const [node, cli, ...rest] = runDueCommand();
-  const tr = `"${node}" "${cli}" ${rest.join(" ")}`;
+  // Windows のタスクスケジューラは環境変数を引き継がないので、cmd /c で先に設定する
+  const envPrefix = Object.entries(inheritedEnv())
+    .filter(([k]) => k !== "PATH")
+    .map(([k, v]) => `set ${k}=${v} && `)
+    .join("");
+  const tr = envPrefix
+    ? `cmd /c "${envPrefix}"${node}" "${cli}" ${rest.join(" ")}"`
+    : `"${node}" "${cli}" ${rest.join(" ")}`;
   const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   const r = spawnSync(
     "schtasks",
