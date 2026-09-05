@@ -44,19 +44,20 @@ Claude Code を使っていない方も、下のコマンドだけで全部で�
 ## インストール
 
 ```bash
-# 1. 自分の情報を登録する（最初に1回だけ）
-npx seikyusho-kun init
+# 1. 入れる
+npm install -g github:Icchaso/seikyusho-kun
 
-# 2. 発行する
-npx seikyusho-kun new
-```
+# 2. 自分の情報を登録する（最初に1回だけ）
+seikyusho-kun init
 
-毎回打つのが面倒なら入れてしまってください。
-
-```bash
-npm install -g seikyusho-kun
+# 3. 発行する
 seikyusho-kun new
 ```
+
+`seikyu` でも呼べます。
+
+> **npm での公開はこれからです。** 公開後は `npx seikyusho-kun` だけで使えるようになります。
+> それまでは上のとおり GitHub から直接入れてください（やることは同じです）。
 
 ### 必要なもの
 

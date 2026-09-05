@@ -15,9 +15,13 @@ and withholding tax.
 ## Install
 
 ```bash
-npx seikyusho-kun init   # one-time setup
-npx seikyusho-kun new    # issue an invoice
+npm install -g github:Icchaso/seikyusho-kun
+seikyusho-kun init   # one-time setup
+seikyusho-kun new    # issue an invoice
 ```
+
+> Not on npm yet — install from GitHub for now. Once published,
+> `npx seikyusho-kun` will work directly.
 
 Requires **Node.js 18.17+** and any Chromium-based browser (Chrome, Edge,
 Chromium, Brave) — used as the PDF engine. Nothing else to install; the package
