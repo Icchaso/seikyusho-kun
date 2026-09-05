@@ -17,7 +17,7 @@ import { runSend, type SendArgs } from "./commands/send.js";
 import { runSchedule, type ScheduleArgs } from "./commands/schedule.js";
 import { runDue, type RunDueArgs } from "./commands/run-due.js";
 import { runList, type ListArgs } from "./commands/list.js";
-import { ChromeNotFoundError } from "./core/chrome.js";
+import { ChromeNotFoundError, ChromeRunError } from "./core/chrome.js";
 import type { LineItem } from "./core/types.js";
 import * as ui from "./core/ui.js";
 
@@ -204,7 +204,7 @@ main()
   .catch((e: unknown) => {
     const err = e as Error;
     console.error("");
-    if (err instanceof ChromeNotFoundError) {
+    if (err instanceof ChromeNotFoundError || err instanceof ChromeRunError) {
       ui.fail(err.message);
     } else {
       ui.fail(err.message || String(e));

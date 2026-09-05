@@ -106,6 +106,15 @@ function requireChrome(): string {
   return bin;
 }
 
+/** Chrome の応答を待つ上限。混んでいる環境でも足りるように長めに取る */
+const CHROME_TIMEOUT_MS = 90_000;
+
+/**
+ * 起動オプション。
+ * --user-data-dir で専用プロファイルを作る案も試したが、Chrome の初回起動処理が
+ * 毎回走って1回あたり4秒以上かかり、明細の多い請求書(オートフィットで複数回生成)が
+ * 実用にならなかったため採用していない。
+ */
 function baseArgs(): string[] {
   const args = [
     "--headless",
@@ -114,12 +123,52 @@ function baseArgs(): string[] {
     "--no-default-browser-check",
     "--disable-extensions",
     "--disable-dev-shm-usage",
+    "--disable-background-networking",
+    "--disable-sync",
+    "--mute-audio",
   ];
   // CI(root実行)では sandbox が使えないことがある
   if (process.platform === "linux" && process.getuid?.() === 0) {
     args.push("--no-sandbox");
   }
   return args;
+}
+
+export class ChromeRunError extends Error {
+  constructor(detail: string) {
+    super(
+      [
+        "PDFの生成に失敗しました。",
+        "",
+        "  よくある原因:",
+        "   ・Chrome が別の処理で混み合っている（少し待ってもう一度お試しください）",
+        "   ・Chrome の更新中",
+        "   ・出力先フォルダに書き込めない",
+        "",
+        `  詳細: ${detail}`,
+      ].join("\n"),
+    );
+    this.name = "ChromeRunError";
+  }
+}
+
+/** Chrome を1回動かす */
+function runChrome(args: string[]): {
+  status: number | null;
+  stderr: string;
+  error?: Error;
+} {
+  const bin = requireChrome();
+  const r = spawnSync(bin, args, {
+    encoding: "utf-8",
+    timeout: CHROME_TIMEOUT_MS,
+    maxBuffer: 32 * 1024 * 1024,
+  });
+  return {
+    status: r.status,
+    stderr: r.stderr ?? "",
+    ...(r.error ? { error: r.error } : {}),
+  };
 }
 
 function withTempHtml<T>(html: string, fn: (fileUrl: string) => T): T {
@@ -133,29 +182,43 @@ function withTempHtml<T>(html: string, fn: (fileUrl: string) => T): T {
   }
 }
 
-/** HTML を A4 PDF にする */
+/**
+ * HTML を A4 PDF にする。
+ * Chrome は他の処理と競合して一時的に固まることがあるので、1度だけ静かに再試行する。
+ * 請求書1枚が「たまたま混んでいた」で失われないようにするため。
+ */
 export function htmlToPdf(html: string, outPath: string): void {
-  const bin = requireChrome();
+  requireChrome();
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
 
   withTempHtml(html, (url) => {
-    const r = spawnSync(
-      bin,
-      [
+    let lastDetail = "";
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      fs.rmSync(outPath, { force: true });
+      const r = runChrome([
         ...baseArgs(),
         "--no-pdf-header-footer",
         `--print-to-pdf=${outPath}`,
         url,
-      ],
-      { encoding: "utf-8", timeout: 60_000 },
-    );
-    if (r.error) throw r.error;
-    if (!fs.existsSync(outPath)) {
-      throw new Error(
-        `PDFの生成に失敗しました。\nChrome: ${bin}\n${r.stderr ?? ""}`,
-      );
+      ]);
+
+      if (!r.error && fs.existsSync(outPath) && fs.statSync(outPath).size > 0) {
+        return;
+      }
+      lastDetail =
+        r.error?.message ?? r.stderr.trim() ?? `終了コード ${r.status}`;
+      if (attempt === 1) {
+        // 混雑が収まるのを少し待ってから、もう一度だけ試す
+        sleepSync(1500);
+      }
     }
+    throw new ChromeRunError(lastDetail);
   });
+}
+
+/** 同期的に待つ（依存を増やさないため Atomics.wait を使う） */
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 /**
@@ -170,7 +233,7 @@ export function measureDom(html: string): Record<string, number> | null {
     const r = spawnSync(
       bin,
       [...baseArgs(), "--virtual-time-budget=3000", "--dump-dom", url],
-      { encoding: "utf-8", timeout: 60_000, maxBuffer: 32 * 1024 * 1024 },
+      { encoding: "utf-8", timeout: CHROME_TIMEOUT_MS, maxBuffer: 32 * 1024 * 1024 },
     );
     if (r.error || !r.stdout) return null;
     const m = r.stdout.match(/data-measure="([^"]*)"/);
