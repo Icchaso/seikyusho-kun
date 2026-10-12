@@ -1,7 +1,8 @@
 /** ユーザーが打ち込んだ文字列をデータに変換する */
 import type { LineItem, TaxRate } from "./types.js";
 
-function toHalfWidth(s: string): string {
+/** 全角の数字・小数点・カンマを半角にする(金額や率の入力を受けるため) */
+export function toHalfWidth(s: string): string {
   return s.replace(/[０-９．，]/g, (ch) => {
     if (ch === "．") return ".";
     if (ch === "，") return ",";

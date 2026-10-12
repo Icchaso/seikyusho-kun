@@ -8,6 +8,7 @@ import path from "node:path";
 import { parseArgs, type ParseArgsConfig } from "node:util";
 import { fileURLToPath } from "node:url";
 import { runNew, type NewArgs } from "./commands/new.js";
+import { runMitsumori, type MitsumoriArgs } from "./commands/mitsumori.js";
 import { extractItemArgs } from "./core/parse.js";
 import { runInit } from "./commands/init.js";
 import { runClients } from "./commands/clients.js";
@@ -32,10 +33,32 @@ const OPTIONS: Record<string, Opts> = {
     contact: S(),
     notes: S(true),
     due: S(),
+    "from-quote": S(),
     "issue-date": S(),
     no: S(),
     out: S(),
     theme: S(),
+    html: B(),
+    open: B(),
+    save: B(),
+    "no-save": B(),
+    yes: { type: "boolean", short: "y" },
+  },
+  mitsumori: {
+    to: S(),
+    contact: S(),
+    notes: S(true),
+    valid: S(),
+    delivery: S(),
+    format: S(),
+    revisions: S(),
+    expenses: S(),
+    "expenses-note": S(),
+    "issue-date": S(),
+    no: S(),
+    out: S(),
+    theme: S(),
+    limit: S(),
     html: B(),
     open: B(),
     save: B(),
@@ -84,6 +107,7 @@ ${ui.c.bold("請求書くん")} ${ui.dim("(seikyusho-kun)")} — 宛先・名目
 ${ui.c.bold("はじめかた")}
   seikyusho-kun init                  自分の情報を登録する（最初に1回だけ）
   seikyusho-kun new                   請求書を発行する（対話で聞かれます）
+  seikyusho-kun mitsumori             見積書を発行する（対話で聞かれます）
 
 ${ui.c.bold("コマンドで全部書く場合")}
   seikyusho-kun new --to "株式会社ABC" --item "ホームページ制作費" --amount 150000 --due 月末
@@ -91,6 +115,7 @@ ${ui.c.bold("コマンドで全部書く場合")}
 ${ui.c.bold("コマンド一覧")}
   init                  セットアップ（発行者・振込先・デザイン）
   new                   請求書を発行する
+  mitsumori [list]      見積書を発行する / 発行済みの見積書の一覧
   clients [list|add|show|remove]
                         取引先の管理
   theme [list|use|preview|eject]
@@ -125,7 +150,17 @@ ${ui.c.bold("new の主なオプション")}
   --theme <名前>        今回だけデザインを変える
   --html                PDFではなくHTMLを出す
   --open                出したPDFをすぐ開く
+  --from-quote <番号>   見積書の宛先と明細を引き継いで請求書にする
   -y, --yes             対話せずに実行する（cron向け）
+
+${ui.c.bold("mitsumori の主なオプション")}
+  ${ui.dim("new と同じオプション（--to / --item / --amount / --qty / --unit / --rate / --contact / --notes）が使えます")}
+  --valid <有効期限>    既定は発行日から1ヶ月後（2ヶ月後 / 翌月末 / 2026-11-30 も可）
+  --delivery <納期>     2026-11-30 のような日付でも「ご発注後30日」のような文でも可
+  --format <納品形式>   例: MP4 / H.264 / 1920×1080
+  --revisions <修正>    例: 初稿提出後2回まで（3回目以降は別途お見積り）
+  --expenses <諸経費>   30000 のような金額、または 10% のような率（他の明細の合計に対する比率）
+  --expenses-note <文>  諸経費の行に小さく出す内訳
 
 ${ui.dim("データの置き場所: ~/.seikyusho-kun/   |   ドキュメント: https://github.com/Icchaso/seikyusho-kun")}
 `;
@@ -157,7 +192,7 @@ async function main(): Promise<number> {
   // 並び順に意味があるので、parseArgs に渡す前に取り出す。
   let commandArgs = argv.slice(1);
   let items: LineItem[] = [];
-  if (command === "new") {
+  if (command === "new" || command === "mitsumori") {
     const extracted = extractItemArgs(commandArgs);
     items = extracted.items;
     commandArgs = extracted.rest;
@@ -175,6 +210,12 @@ async function main(): Promise<number> {
       return runInit(values as { force?: boolean });
     case "new":
       return runNew({ ...(values as NewArgs), items });
+    case "mitsumori":
+      return runMitsumori({
+        ...(values as Omit<MitsumoriArgs, "_" | "items">),
+        items,
+        _: positionals,
+      });
     case "clients":
       return runClients({ ...(values as { yes?: boolean }), _: positionals });
     case "theme":

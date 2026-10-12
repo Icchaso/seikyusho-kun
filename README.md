@@ -1,6 +1,7 @@
 # 請求書くん（seikyusho-kun）
 
 **宛先・名目・金額・締日**、この4つを言うだけで請求書PDFが出ます。
+見積書も同じ使い勝手で出せて、受注したらそのまま請求書に変換できます。
 日本の適格請求書（インボイス制度）・軽減税率・源泉徴収に対応。
 
 <p align="center">
@@ -97,6 +98,35 @@ seikyusho-kun new --to "株式会社ABC" \
   --due 翌月末
 ```
 
+### 見積書も出せる。受注したらそのまま請求書に
+
+請求書と同じ書き方で見積書が出ます。発行者情報・振込先・取引先・デザインはそのまま使われます。
+
+```bash
+seikyusho-kun mitsumori --to "株式会社ABC" \
+  --item "撮影一式" --amount 300000 --qty 1 --unit 式 \
+  --item "編集費"   --amount 100000 --qty 1 --unit 式 \
+  --expenses 10% \
+  --delivery "ご発注後30日" \
+  --format "MP4 / H.264 / 1920×1080" \
+  --revisions "初稿提出後2回まで（3回目以降は別途お見積り）"
+```
+
+- **有効期限**は既定で発行日から1ヶ月後（`--valid 2ヶ月後` などで変更可）
+- **諸経費**は `--expenses 30000` の金額指定でも、`--expenses 10%`（ほかの明細の合計に対する率）でも書けます
+- **納期・納品形式・修正回数**は「お見積条件」として見積書に明記されます
+- 見積書に**振込先は出ません**。**源泉徴収も引きません**（見積は総額を示すのが通例のため）
+- 見積書番号は請求書とは**別の連番**です（既定 `Q202610-001`）
+
+受注したら、打ち直さずに請求書へ変換できます。
+
+```bash
+seikyusho-kun mitsumori list                          # 出した見積書の一覧
+seikyusho-kun new --from-quote Q202610-001 --due 月末  # 宛先と明細を引き継いで請求書に
+```
+
+変換すると、見積書側に「請求済み」と記録されます。
+
 ### 日本の請求書として、ちゃんとしている
 
 - **適格請求書（インボイス制度）の記載要件**を満たします
@@ -176,7 +206,8 @@ macOS は launchd、Linux は cron、Windows はタスクスケジューラに�
 | コマンド | 何をするか |
 |---|---|
 | `init` | 発行者・振込先・デザインの初期設定 |
-| `new` | 請求書を発行する |
+| `new` | 請求書を発行する（`--from-quote` で見積書から変換） |
+| `mitsumori` | 見積書を発行する（`mitsumori list` で一覧） |
 | `list` | 発行した請求書の一覧 |
 | `clients` | 取引先の登録・確認・削除 |
 | `theme` | デザインの切り替え、自作テンプレートの書き出し |
@@ -198,13 +229,15 @@ macOS は launchd、Linux は cron、Windows はタスクスケジューラに�
 ~/.seikyusho-kun/
 ├── config.json      自分の情報・振込先・デザイン設定
 ├── clients/         取引先
-├── issued.json      発行台帳
+├── issued.json      請求書の発行台帳
+├── quotes.json      見積書の発行台帳（請求書への変換に使う）
 ├── templates/       自作テンプレート
 ├── logs/            自動発行のログ
 └── .env             メールの認証情報（本人だけが読める権限）
 ```
 
-PDFの保存先は既定で `~/Documents/請求書/{年}/` です。`config.json` で変更できます。
+PDFの保存先は既定で請求書が `~/Documents/請求書/{年}/`、見積書が `~/Documents/見積書/{年}/` です。
+どちらも `config.json` で変更できます。
 
 ---
 
@@ -217,6 +250,7 @@ PDFの保存先は既定で `~/Documents/請求書/{年}/` です。`config.json
 ```
 
 `INVOICE_PDF` `INVOICE_NO` `CLIENT_NAME` `INVOICE_TOTAL` などが環境変数で渡ります。
+見積書の発行でも同じフックが走ります。`DOC_KIND` が `invoice` か `quote` かで見分けてください。
 CSV台帳への追記、会計ソフトのAPI、Slack通知などをここに繋いでください。
 実例は [`examples/afterIssue-hook.example.sh`](examples/afterIssue-hook.example.sh) にあります。
 
@@ -225,6 +259,7 @@ CSV台帳への追記、会計ソフトのAPI、Slack通知などをここに繋
 ## ドキュメント
 
 - [セットアップ](docs/セットアップ.md)
+- [見積書](docs/見積書.md)
 - [テンプレートのカスタマイズ](docs/テンプレートのカスタマイズ.md)
 - [メール送信](docs/メール送信.md)
 - [定期発行](docs/定期発行.md)

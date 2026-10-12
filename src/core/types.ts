@@ -1,5 +1,8 @@
 /** 請求書くん のデータモデル */
 
+/** 書類の種類。請求書 / 見積書 */
+export type DocKind = "invoice" | "quote";
+
 /** 適用税率。0 は非課税・不課税・免税をまとめて扱う */
 export type TaxRate = 10 | 8 | 0;
 
@@ -161,6 +164,46 @@ export interface TaxConfig {
   withholding: boolean;
 }
 
+/**
+ * 見積書だけに出る条件欄。
+ * 請求書の「お支払期限・振込先」に相当する場所に入る。
+ */
+export interface QuoteTerms {
+  /** 有効期限 (2026年11月12日) */
+  validUntil: string;
+  validUntilISO: string;
+  /** 納期。「2026-11-30」でも「ご発注後30日」のような自由文でもよい */
+  delivery?: string;
+  /** 納品形式 (例: MP4 / H.264 / 1920×1080) */
+  deliveryFormat?: string;
+  /** 修正回数の条件 (例: 初稿提出後2回まで) */
+  revisions?: string;
+}
+
+/** 見積書まわりの設定。請求書と別建てにして、番号も出力先も混ざらないようにする */
+export interface QuoteConfig {
+  /** 見積書番号。{yyyy} {yy} {mm} {dd} {seq} {seq:3} を使える */
+  noPattern: string;
+  /** PDF の出力先。{year} を使える */
+  outputDir: string;
+  /** 出力ファイル名。{no} {client} {date} {year} {month} を使える */
+  fileNamePattern: string;
+  /** 挨拶文 */
+  greeting: string;
+  /** 備考欄の既定 */
+  notes: string[];
+  /** 有効期限の既定。発行日からの相対指定 (1ヶ月後 / 30日後 / 翌月末 など) */
+  validFor: string;
+  /** 諸経費の行に出る品名 */
+  expenseLabel: string;
+  /** 諸経費の行に小さく出す内訳 */
+  expenseNote: string;
+  /** 修正回数の既定文。空なら条件欄に出さない */
+  revisions: string;
+  /** 納品形式の既定文。空なら条件欄に出さない */
+  deliveryFormat: string;
+}
+
 /** ~/.seikyusho-kun/config.json */
 export interface Config {
   version: number;
@@ -185,10 +228,18 @@ export interface Config {
   notes: string[];
   mail?: MailConfig;
   hooks?: { afterIssue?: string };
+  /** 見積書の設定 */
+  quote: QuoteConfig;
 }
 
-/** テンプレートに渡す完成形 */
+/**
+ * テンプレートに渡す完成形。
+ * 見積書も同じ形で扱う(kind で区別し、番号は invoiceNo に見積書番号が入る)。
+ */
 export interface InvoiceDoc {
+  /** 書類の種類。省略時は請求書として扱う */
+  kind?: DocKind;
+  /** 請求書番号。見積書のときは見積書番号 */
   invoiceNo: string;
   /** 2026年9月5日 */
   issueDate: string;
@@ -220,4 +271,6 @@ export interface InvoiceDoc {
   /** 明細に単位列を出すか */
   showUnit: boolean;
   logoDataUri?: string;
+  /** 見積書のときだけ入る条件欄 */
+  terms?: QuoteTerms;
 }

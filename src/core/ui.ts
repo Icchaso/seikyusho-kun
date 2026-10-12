@@ -1,4 +1,5 @@
 /** 画面出力の共通部品。CLI の見た目もプロダクトの一部として揃える */
+import { spawn } from "node:child_process";
 import pc from "picocolors";
 
 export const c = pc;
@@ -47,6 +48,21 @@ export function displayWidth(s: string): number {
 
 export function yen(n: number): string {
   return `¥${n.toLocaleString("ja-JP")}`;
+}
+
+/** できたファイルを OS の既定アプリで開く */
+export function openFile(file: string): void {
+  const cmd =
+    process.platform === "darwin"
+      ? "open"
+      : process.platform === "win32"
+        ? "start"
+        : "xdg-open";
+  spawn(cmd, [file], {
+    detached: true,
+    stdio: "ignore",
+    shell: process.platform === "win32",
+  }).unref();
 }
 
 /** 対話プロンプトを出してよい状況か(パイプ・cron 実行では出さない) */

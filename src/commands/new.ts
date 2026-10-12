@@ -1,18 +1,19 @@
 /**
  * new — 請求書を発行する。
  * 「宛先・名目・金額・締日」の4つが揃えば出せる。足りない分は対話で聞く。
+ * 見積書から変換するときは --from-quote で見積書番号を渡す。
  */
 import fs from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
 import * as p from "@clack/prompts";
-import type { Client, Config, LineItem } from "../core/types.js";
+import type { Client, LineItem } from "../core/types.js";
 import { loadConfig } from "../core/config.js";
 import { formatJP, parseDue } from "../core/dates.js";
 import { buildInvoiceDoc, issueInvoice, resolveOutputPath } from "../core/invoice.js";
 import { nextInvoiceNo, peekInvoiceNo, rollbackInvoiceNo } from "../core/numbering.js";
-import { parseAmount, parseTaxRate } from "../core/parse.js";
-import { findClient, listClients, saveClient } from "../core/store.js";
+import { askClient, askItems, cancelled } from "../core/prompts.js";
+import { findQuote, markInvoiced, type QuoteEntry } from "../core/quote-ledger.js";
+import { findClient, saveClient } from "../core/store.js";
 import { renderHtml } from "../core/render.js";
 import * as ui from "../core/ui.js";
 
@@ -22,6 +23,8 @@ export interface NewArgs {
   /** cli.ts が引数の並び順から組み立てた明細 */
   items?: LineItem[];
   due?: string;
+  /** この見積書番号の内容を引き継いで請求書にする */
+  "from-quote"?: string;
   "issue-date"?: string;
   no?: string;
   out?: string;
@@ -32,86 +35,6 @@ export interface NewArgs {
   save?: boolean;
   "no-save"?: boolean;
   yes?: boolean;
-}
-
-function cancelled(): never {
-  p.cancel("中止しました。請求書は発行していません。");
-  process.exit(130);
-}
-
-/** 宛先を決める。保存済みがあれば選ばせ、無ければ入力させる */
-async function askClient(preset?: string): Promise<Client> {
-  if (preset) {
-    const found = findClient(preset);
-    if (found) return found;
-    return { name: preset };
-  }
-
-  const saved = listClients();
-  if (saved.length > 0) {
-    const choice = await p.select({
-      message: "宛先は？",
-      options: [
-        ...saved.map((cl) => ({
-          value: cl.name,
-          label: cl.name,
-          hint: cl.contact ? `ご担当 ${cl.contact}` : undefined,
-        })),
-        { value: "__new__", label: "＋ 新しい宛先を入力する" },
-      ],
-    });
-    if (p.isCancel(choice)) cancelled();
-    if (choice !== "__new__") {
-      return findClient(String(choice)) ?? { name: String(choice) };
-    }
-  }
-
-  const name = await p.text({
-    message: "宛先は？",
-    placeholder: "株式会社ABC",
-    validate: (v) => (v.trim() ? undefined : "宛先を入力してください"),
-  });
-  if (p.isCancel(name)) cancelled();
-  return { name: String(name).trim() };
-}
-
-async function askItems(config: Config): Promise<LineItem[]> {
-  const items: LineItem[] = [];
-  for (;;) {
-    const name = await p.text({
-      message: items.length === 0 ? "名目は？" : "次の名目は？（空欄で終了）",
-      placeholder: items.length === 0 ? "ホームページ制作費" : "",
-      validate: (v) =>
-        items.length === 0 && !v.trim() ? "名目を入力してください" : undefined,
-    });
-    if (p.isCancel(name)) cancelled();
-    const label = String(name).trim();
-    if (!label) break;
-
-    const amount = await p.text({
-      message: `金額は？（${config.tax.mode === "inclusive" ? "税込" : "税抜"}）`,
-      placeholder: "150000  /  15万 でも可",
-      validate: (v) => {
-        try {
-          parseAmount(v);
-          return undefined;
-        } catch {
-          return "金額を数字で入力してください";
-        }
-      },
-    });
-    if (p.isCancel(amount)) cancelled();
-
-    items.push({ name: label, amount: parseAmount(String(amount)) });
-
-    const more = await p.confirm({
-      message: "明細をもう1行足しますか？",
-      initialValue: false,
-    });
-    if (p.isCancel(more)) cancelled();
-    if (!more) break;
-  }
-  return items;
 }
 
 async function askDue(issueDate: Date): Promise<Date> {
@@ -148,14 +71,21 @@ async function askDue(issueDate: Date): Promise<Date> {
   return parseDue(String(typed), issueDate) as Date;
 }
 
-function openFile(file: string): void {
-  const cmd =
-    process.platform === "darwin"
-      ? "open"
-      : process.platform === "win32"
-        ? "start"
-        : "xdg-open";
-  spawn(cmd, [file], { detached: true, stdio: "ignore", shell: process.platform === "win32" }).unref();
+/** --from-quote で渡された見積書を取り出す。すでに請求済みなら注意を出す */
+function loadQuote(query: string): QuoteEntry {
+  const quote = findQuote(query);
+  if (!quote) {
+    throw new Error(
+      `見積書が見つかりません: ${query}` +
+        "\n  発行済みの見積書は `seikyusho-kun mitsumori list` で確認できます",
+    );
+  }
+  if (quote.invoicedNo) {
+    ui.warn(
+      `この見積書はすでに請求書 ${quote.invoicedNo} に変換済みです（${quote.invoicedAt?.slice(0, 10)}）`,
+    );
+  }
+  return quote;
 }
 
 export async function runNew(args: NewArgs): Promise<number> {
@@ -168,25 +98,38 @@ export async function runNew(args: NewArgs): Promise<number> {
 
   const interactive = ui.isInteractive() && !args.yes;
   const cliItems = args.items ?? [];
-  const hasAll = Boolean(args.to) && cliItems.length > 0 && Boolean(args.due);
+
+  // --from-quote: 見積書の宛先と明細を引き継ぐ
+  const quote = args["from-quote"] ? loadQuote(args["from-quote"]) : null;
+  // 明細はコマンドで指定されたほうが優先。無ければ見積書のものを使う
+  const presetItems = cliItems.length > 0 ? cliItems : (quote?.items ?? []);
+  const presetClient = args.to ? null : (quote?.client ?? null);
+
+  const hasAll =
+    Boolean(args.to || presetClient) && presetItems.length > 0 && Boolean(args.due);
 
   let client: Client;
   let items: LineItem[];
   let dueDate: Date;
 
   if (hasAll || !interactive) {
-    if (!args.to) throw new Error("--to（宛先）が必要です");
-    if (cliItems.length === 0) throw new Error("--item と --amount（名目と金額）が必要です");
+    if (!args.to && !presetClient) throw new Error("--to（宛先）が必要です");
+    if (presetItems.length === 0) throw new Error("--item と --amount（名目と金額）が必要です");
     if (!args.due) throw new Error("--due（締日）が必要です");
-    client = findClient(args.to) ?? { name: args.to };
-    items = cliItems;
+    client = presetClient ?? findClient(args.to as string) ?? { name: args.to as string };
+    items = presetItems;
     const d = parseDue(args.due, issueDate);
     if (!d) throw new Error(`締日として読めません: ${args.due}`);
     dueDate = d;
   } else {
     p.intro(ui.c.bgCyan(ui.c.black(" 請求書くん ")));
-    client = await askClient(args.to);
-    items = cliItems.length > 0 ? cliItems : await askItems(config);
+    if (quote) {
+      ui.info(
+        `見積書 ${quote.quoteNo}（${quote.client.name} / ${ui.yen(quote.total)}）の内容を引き継ぎます`,
+      );
+    }
+    client = presetClient ?? (await askClient(args.to));
+    items = presetItems.length > 0 ? presetItems : await askItems(config);
     dueDate = args.due
       ? (parseDue(args.due, issueDate) ?? (await askDue(issueDate)))
       : await askDue(issueDate);
@@ -240,6 +183,9 @@ export async function runNew(args: NewArgs): Promise<number> {
   const rows: [string, string][] = [
     ["宛先", `${doc.client.name} ${doc.client.honorific}`],
     ["請求書番号", doc.invoiceNo],
+    ...(quote
+      ? ([["元の見積書", quote.quoteNo]] as [string, string][])
+      : ([] as [string, string][])),
     ["発行日", doc.issueDate],
     ["お支払期限", doc.dueDate],
     ["合計（税込）", ui.yen(doc.totals.total)],
@@ -258,6 +204,11 @@ export async function runNew(args: NewArgs): Promise<number> {
   console.log("");
   ui.ok(`発行しました: ${ui.c.bold(result.pdfPath)}`);
   ui.kv(rows);
+
+  if (quote) {
+    markInvoiced(quote.quoteNo, doc.invoiceNo);
+    ui.info(`見積書 ${quote.quoteNo} を「請求済み」にしました`);
+  }
 
   if (result.hook.ran) {
     if (result.hook.ok) ui.info("発行後フックを実行しました");
@@ -282,7 +233,7 @@ export async function runNew(args: NewArgs): Promise<number> {
     }
   }
 
-  if (args.open) openFile(result.pdfPath);
+  if (args.open) ui.openFile(result.pdfPath);
   if (interactive) {
     p.outro(ui.dim(`次の請求書番号は ${peekInvoiceNo(config.invoiceNoPattern, new Date())} です`));
   }

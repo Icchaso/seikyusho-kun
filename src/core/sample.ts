@@ -1,7 +1,8 @@
-/** テーマのプレビューや動作確認に使うサンプル請求書 */
+/** テーマのプレビューや動作確認に使うサンプル請求書・見積書 */
 import type { Client, Config, LineItem } from "./types.js";
-import { addDays, endOfMonth } from "./dates.js";
+import { addDays, addMonths, endOfMonth } from "./dates.js";
 import { buildInvoiceDoc } from "./invoice.js";
+import { buildQuoteDoc } from "./quote.js";
 
 export const SAMPLE_CLIENT: Client = {
   name: "サンプル商事株式会社",
@@ -35,5 +36,21 @@ export function sampleDoc(config: Config, items: LineItem[] = SAMPLE_ITEMS) {
     invoiceNo: "SAMPLE-001",
     issueDate,
     dueDate: endOfMonth(addDays(issueDate, 20)),
+  });
+}
+
+/** サンプル見積書。見積書のレイアウト検証に使う */
+export function sampleQuoteDoc(config: Config, items: LineItem[] = SAMPLE_ITEMS) {
+  const issueDate = new Date();
+  return buildQuoteDoc({
+    config,
+    client: SAMPLE_CLIENT,
+    items,
+    quoteNo: "SAMPLE-Q001",
+    issueDate,
+    validUntil: addMonths(issueDate, 1),
+    delivery: "ご発注後30日",
+    deliveryFormat: "MP4 / H.264 / 1920×1080",
+    revisions: "初稿提出後2回まで（3回目以降は別途お見積り）",
   });
 }

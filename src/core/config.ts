@@ -1,10 +1,25 @@
 /** 設定の読み書き。初回は init ウィザードが作る */
 import fs from "node:fs";
 import path from "node:path";
-import type { Config } from "./types.js";
+import type { Config, DocKind, QuoteConfig } from "./types.js";
 import { configPath, ensureDir, expandTilde, homeDir } from "./paths.js";
 
 export const CONFIG_VERSION = 1;
+
+export function defaultQuoteConfig(): QuoteConfig {
+  return {
+    noPattern: "Q{yyyy}{mm}-{seq:3}",
+    outputDir: "~/Documents/見積書/{year}",
+    fileNamePattern: "見積書_{client}_{no}",
+    greeting: "下記の通りお見積り申し上げます。",
+    notes: ["本見積書の有効期限内にご発注いただいた場合の金額です。"],
+    validFor: "1ヶ月後",
+    expenseLabel: "諸経費",
+    expenseNote: "交通費・駐車場代・ロケ地使用料ほか",
+    revisions: "",
+    deliveryFormat: "",
+  };
+}
 
 export function defaultConfig(): Config {
   return {
@@ -27,6 +42,7 @@ export function defaultConfig(): Config {
     notes: [
       "お振込手数料は貴社にてご負担いただきますようお願いいたします。",
     ],
+    quote: defaultQuoteConfig(),
   };
 }
 
@@ -54,6 +70,7 @@ export function mergeConfig(base: Config, raw: Partial<Config>): Config {
     bank: { ...base.bank, ...raw.bank },
     tax: { ...base.tax, ...raw.tax },
     notes: raw.notes ?? base.notes,
+    quote: { ...base.quote, ...raw.quote },
     ...(raw.mail ? { mail: raw.mail } : {}),
     ...(raw.hooks ? { hooks: raw.hooks } : {}),
   };
@@ -66,12 +83,17 @@ export function saveConfig(config: Config): string {
   return p;
 }
 
-/** 出力先ディレクトリ。{year}/{month} を展開する */
-export function resolveOutputDir(config: Config, date: Date): string {
+/** 出力先ディレクトリ。{year}/{month} を展開する(見積書は別フォルダ) */
+export function resolveOutputDir(
+  config: Config,
+  date: Date,
+  kind: DocKind = "invoice",
+): string {
   const year = String(date.getFullYear());
   const month = String(date.getMonth() + 1).padStart(2, "0");
+  const pattern = kind === "quote" ? config.quote.outputDir : config.outputDir;
   const dir = expandTilde(
-    config.outputDir.replace(/\{year\}/g, year).replace(/\{month\}/g, month),
+    pattern.replace(/\{year\}/g, year).replace(/\{month\}/g, month),
   );
   return path.resolve(dir);
 }

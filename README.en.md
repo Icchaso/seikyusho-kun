@@ -1,8 +1,9 @@
 # seikyusho-kun (請求書くん)
 
 Say four things — **who, what, how much, when it's due** — and get an invoice PDF.
-Built for Japanese invoicing: qualified invoices (インボイス制度), reduced tax rates,
-and withholding tax.
+Quotes (見積書) work the same way, and convert straight into invoices once the job
+is won. Built for Japanese invoicing: qualified invoices (インボイス制度), reduced
+tax rates, and withholding tax.
 
 <p align="center">
   <img src="docs/images/sample-plain.png" width="46%" alt="plain theme">
@@ -49,6 +50,35 @@ seikyusho-kun new --to "株式会社ABC" \
   --due 翌月末
 ```
 
+## Quotes
+
+```bash
+seikyusho-kun mitsumori --to "株式会社ABC" \
+  --item "Production" --amount 300000 --qty 1 --unit 式 \
+  --expenses 10% \
+  --delivery "ご発注後30日" \
+  --format "MP4 / H.264 / 1920×1080" \
+  --revisions "初稿提出後2回まで"
+```
+
+Quotes reuse the same issuer details, counterparties and themes as invoices, with
+a few deliberate differences: no bank details (payment isn't due yet), no
+withholding tax (quotes show the gross figure), a validity date instead of a due
+date, and their own number sequence (`Q202610-001`).
+
+`--expenses` adds a single expenses line — either a flat amount or a percentage
+of the other line items. `--delivery`, `--format` and `--revisions` are printed
+as quote conditions.
+
+Once the job is won:
+
+```bash
+seikyusho-kun mitsumori list                           # what you have quoted
+seikyusho-kun new --from-quote Q202610-001 --due 月末   # carry it into an invoice
+```
+
+The counterparty and line items carry over; the quote is marked as invoiced.
+
 ## What it does
 
 - **Qualified invoice (適格請求書) compliance** — registration number, per-rate
@@ -74,7 +104,8 @@ seikyusho-kun new --to "株式会社ABC" \
 | Command | |
 |---|---|
 | `init` | Set up issuer details, bank account, theme |
-| `new` | Issue an invoice |
+| `new` | Issue an invoice (`--from-quote` converts a quote) |
+| `mitsumori` | Issue a quote (`mitsumori list` to list them) |
 | `list` | List issued invoices |
 | `clients` | Manage counterparties |
 | `theme` | Switch themes, eject templates |

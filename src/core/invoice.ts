@@ -66,7 +66,10 @@ export function buildInvoiceDoc(p: BuildDocParams): InvoiceDoc {
   return doc;
 }
 
-/** 出力ファイルのパスを決める。同名があれば -2, -3 と枝番を付ける */
+/**
+ * 出力ファイルのパスを決める。同名があれば -2, -3 と枝番を付ける。
+ * 見積書(doc.kind === "quote")は見積書用の出力先・ファイル名を使う。
+ */
 export function resolveOutputPath(
   config: Config,
   doc: InvoiceDoc,
@@ -78,9 +81,11 @@ export function resolveOutputPath(
     ensureDir(path.dirname(p));
     return p;
   }
-  const dir = ensureDir(resolveOutputDir(config, issueDate));
+  const dir = ensureDir(resolveOutputDir(config, issueDate, doc.kind));
+  const pattern =
+    doc.kind === "quote" ? config.quote.fileNamePattern : config.fileNamePattern;
   const base = safeFileName(
-    config.fileNamePattern
+    pattern
       .replace(/\{no\}/g, doc.invoiceNo)
       .replace(/\{client\}/g, doc.client.name)
       .replace(/\{date\}/g, doc.issueDateISO)

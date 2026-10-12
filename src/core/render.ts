@@ -156,8 +156,12 @@ export function renderHtml(
   const cols = doc.totals.hasReduced ? 5 : 4;
   const singleRate = doc.totals.buckets[0]?.rate ?? config.tax.defaultRate;
 
-  return env.render("invoice.njk", {
+  // 見積書は quote.njk。自作テーマに quote.njk が無ければ同梱のものに落ちる
+  const template = doc.kind === "quote" ? "quote.njk" : "invoice.njk";
+
+  return env.render(template, {
     ...doc,
+    kind: doc.kind ?? "invoice",
     theme: theme.name,
     styles,
     cols,

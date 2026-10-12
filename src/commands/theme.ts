@@ -122,6 +122,7 @@ function ejectTheme(from: string, as?: string): number {
     path.join(bundled, "invoice.njk"),
     path.join(dest, "invoice.njk"),
   );
+  fs.copyFileSync(path.join(bundled, "quote.njk"), path.join(dest, "quote.njk"));
   // base.css と テーマCSS をひとつにまとめて、1ファイルだけ触ればいい状態にする
   const css = [
     "/* ============================================================",
@@ -142,7 +143,8 @@ function ejectTheme(from: string, as?: string): number {
   ui.ok(`テンプレートを書き出しました: ${dest}`);
   ui.kv([
     ["theme.css", "見た目（色・線・余白）を編集するファイル"],
-    ["invoice.njk", "構造そのものを変えたいとき"],
+    ["invoice.njk", "請求書の構造そのものを変えたいとき"],
+    ["quote.njk", "見積書の構造そのものを変えたいとき"],
     ["base.reference.css", "共通の骨格（読むだけ。編集は theme.css で上書き）"],
   ]);
   console.log("");

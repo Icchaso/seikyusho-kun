@@ -78,6 +78,10 @@ export function parseDue(input: string, base = new Date()): Date | null {
   const monthEnd = s.match(/^(\d+)[ヶか]?月後(の)?末日?$/);
   if (monthEnd?.[1]) return endOfMonth(addMonths(today, Number(monthEnd[1])));
 
+  // Nヶ月後(同じ日)。見積書の有効期限で「1ヶ月後」と言われることが多い
+  const monthLater = s.match(/^(\d+)[ヶヵか]?月後$/);
+  if (monthLater?.[1]) return addMonths(today, Number(monthLater[1]));
+
   // 来月10日 / 翌月10日
   const nextMonthDay = s.match(/^(来月|翌月)(\d+|[一二三四五六七八九十]+)日$/);
   if (nextMonthDay?.[2]) {

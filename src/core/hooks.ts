@@ -12,6 +12,7 @@ export interface HookResult {
 /**
  * config.hooks.afterIssue に書かれたコマンドを、発行内容を環境変数で渡して実行する。
  * 失敗しても請求書自体は発行済みなので、例外にはせず結果を返す。
+ * 見積書の発行でも呼ばれるので、DOC_KIND で見分けられるようにしている。
  */
 export function runAfterIssue(
   config: Config,
@@ -27,6 +28,7 @@ export function runAfterIssue(
     timeout: 120_000,
     env: {
       ...process.env,
+      DOC_KIND: doc.kind ?? "invoice",
       INVOICE_PDF: pdfPath,
       INVOICE_NO: doc.invoiceNo,
       INVOICE_ISSUE_DATE: doc.issueDateISO,
